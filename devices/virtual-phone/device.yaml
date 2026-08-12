@@ -1,0 +1,38 @@
+id: virtual-phone-01
+name: Linux-Touch Virtual Phone
+status: development
+
+architecture: aarch64
+
+platform:
+  type: qemu
+
+form_factor: phone
+
+resolution:
+  width: 1080
+  height: 2400
+
+orientation:
+  default: portrait
+  supported:
+    - portrait
+    - landscape
+
+input:
+  touchscreen: true
+
+hardware:
+  display: virtual
+  battery: virtual
+  accelerometer: virtual
+  rotation: virtual
+  audio: not_implemented
+  wifi: not_implemented
+  bluetooth: not_implemented
+  camera: not_implemented
+  modem: not_implemented
+  gpu: virtual_or_software
+
+boot:
+  method: qemu
