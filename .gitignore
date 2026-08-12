@@ -1,0 +1,34 @@
+# Build output
+build/
+out/
+dist/
+*.img
+*.img.xz
+*.qcow2
+*.raw
+*.iso
+
+# Kernel/build artifacts
+linux-*/
+*.o
+*.ko
+*.dtb
+*.dtbo
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+
+# Rust
+**/target/
+
+# IDE/editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Local machine files
+.env
+.DS_Store
