@@ -32,3 +32,11 @@ __pycache__/
 # Local machine files
 .env
 .DS_Store
+
+# Local source trees
+/busybox/
+/kernel/linux/
+
+# Generated OS files
+/os/rootfs/
+/os/images/
