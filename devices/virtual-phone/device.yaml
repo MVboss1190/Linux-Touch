@@ -7,6 +7,12 @@ architecture: aarch64
 platform:
   type: qemu
 
+  qemu:
+    machine: virt
+    cpu: cortex-a72
+    memory: 1024
+    console: ttyAMA0
+
 form_factor: phone
 
 resolution:
