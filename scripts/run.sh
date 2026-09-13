@@ -6,6 +6,8 @@ TARGET="${1:-virtual-phone}"
 
 # shellcheck source=lib/profile.sh
 source "$ROOT_DIR/scripts/lib/profile.sh"
+# shellcheck source=lib/tools.sh
+source "$ROOT_DIR/scripts/lib/tools.sh"
 
 # Discovers the device under devices/, validates it against the profile
 # schema and exports LT_DEVICE_* / LT_QEMU_*. Exits 2 on an unknown device,
@@ -20,7 +22,13 @@ if ! command -v qemu-system-aarch64 >/dev/null 2>&1; then
 fi
 
 KERNEL="$ROOT_DIR/kernel/linux/arch/arm64/boot/Image"
-INITRAMFS="$ROOT_DIR/os/images/initramfs.cpio.gz"
+
+# Prefer the build output directory, fall back to the historical location
+# so an initramfs built before this change still boots.
+INITRAMFS="$ROOT_DIR/out/$LT_DEVICE_ID-$LT_BUILD_ID/initramfs.cpio.gz"
+if [[ ! -f "$INITRAMFS" ]]; then
+    INITRAMFS="$ROOT_DIR/os/images/initramfs.cpio.gz"
+fi
 
 if [[ ! -f "$KERNEL" ]]; then
     echo "error: kernel not found:" >&2
@@ -67,6 +75,7 @@ echo "Machine:  $MACHINE"
 echo "CPU:      $CPU"
 echo "Memory:   ${MEMORY}M"
 echo "Console:  $CONSOLE"
+echo "Initramfs: $INITRAMFS"
 echo
 
 exec qemu-system-aarch64 \

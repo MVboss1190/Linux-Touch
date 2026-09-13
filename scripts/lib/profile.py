@@ -186,6 +186,8 @@ _SUPPORTED_KEYWORDS = {
 
 
 def _type_matches(value, expected):
+    if isinstance(expected, list):
+        return any(_type_matches(value, option) for option in expected)
     if expected == "object":
         return isinstance(value, dict)
     if expected == "array":

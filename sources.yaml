@@ -1,0 +1,39 @@
+# Pinned external sources for Linux-Touch.
+#
+# IMPORTANT — these pins are newly chosen, not recovered.
+# The repository never recorded which kernel or BusyBox versions the
+# existing QEMU prototype was built from, and the artifacts it consumes
+# (kernel/linux/, busybox/) are untracked and built by hand. The versions
+# below are therefore a deliberate new baseline, not a description of any
+# previously produced image. Artifacts built before this pin cannot be
+# attributed to these versions, and the build manifest marks them
+# 'prebuilt-unverified' for exactly that reason.
+#
+# Every sha256 below is the value published by the upstream project at the
+# 'checksum_source' URL. No checksum here was computed locally or guessed.
+# The kernel checksum comes from a PGP-clearsigned sums file whose signature
+# has NOT been verified in this repository; verifying it is a manual step.
+
+schema_version: 1
+
+defaults:
+  # Fallback SOURCE_DATE_EPOCH for reproducible builds, used when the
+  # environment does not set one. It is a fixed, documented constant
+  # (2024-01-01T00:00:00Z) rather than the wall clock, so two builds of the
+  # same inputs are byte-identical. Bump it deliberately, never automatically.
+  source_date_epoch: 1704067200
+
+sources:
+  - name: linux
+    description: Linux kernel (6.12 LTS series)
+    version: "6.12.109"
+    url: https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-6.12.109.tar.xz
+    sha256: 5484e552a334e15019f4aeba89e5b58f04651cf2f4e24e04de9f152f1c38e3fa
+    checksum_source: https://cdn.kernel.org/pub/linux/kernel/v6.x/sha256sums.asc
+
+  - name: busybox
+    description: BusyBox userspace for the prototype initramfs
+    version: "1.37.0"
+    url: https://busybox.net/downloads/busybox-1.37.0.tar.bz2
+    sha256: 3311dff32e746499f4df0d5df04d7eb396382d7e108bb9250e7b519b837043a4
+    checksum_source: https://busybox.net/downloads/busybox-1.37.0.tar.bz2.sha256
