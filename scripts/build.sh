@@ -4,21 +4,15 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TARGET="${1:-virtual-phone}"
 
-case "$TARGET" in
-  virtual-phone)
-    DEVICE_PROFILE="$ROOT_DIR/devices/virtual-phone/device.yaml"
-    ;;
-  *)
-    echo "error: unknown target: $TARGET" >&2
-    echo "available targets: virtual-phone" >&2
-    exit 2
-    ;;
-esac
+# shellcheck source=lib/profile.sh
+source "$ROOT_DIR/scripts/lib/profile.sh"
 
-if [[ ! -f "$DEVICE_PROFILE" ]]; then
-  echo "error: missing device profile: $DEVICE_PROFILE" >&2
-  exit 1
-fi
+# Discovers the device under devices/, validates it against the profile
+# schema and exports LT_DEVICE_* / LT_QEMU_*. Exits 2 on an unknown device,
+# 1 on an invalid profile.
+lt_require_device "$TARGET"
+
+DEVICE_PROFILE="$LT_DEVICE_PROFILE"
 
 KERNEL="$ROOT_DIR/kernel/linux/arch/arm64/boot/Image"
 BUSYBOX="$ROOT_DIR/busybox/busybox"
@@ -31,6 +25,7 @@ echo "       Linux-Touch Builder"
 echo "================================"
 echo
 echo "Target: $TARGET"
+echo "Device: $LT_DEVICE_NAME"
 echo "Profile: $DEVICE_PROFILE"
 echo
 

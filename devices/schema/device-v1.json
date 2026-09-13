@@ -1,0 +1,147 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "linux-touch/device-v1.json",
+  "title": "Linux-Touch Device Profile v1",
+  "description": "A device profile describes where the OS runs and what the hardware does. It must not describe userspace.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "name",
+    "status",
+    "architecture",
+    "form_factor",
+    "resolution",
+    "orientation",
+    "input",
+    "hardware",
+    "runner",
+    "boot"
+  ],
+  "properties": {
+    "schema_version": {
+      "description": "Profile schema revision. Only revision 1 exists.",
+      "const": 1
+    },
+    "id": {
+      "description": "Stable identifier. Must equal the profile's directory name.",
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "description": "Maturity of the profile itself, not of individual capabilities.",
+      "enum": ["development", "experimental", "supported", "deprecated"]
+    },
+    "architecture": {
+      "description": "Target CPU architecture. Only aarch64 is implemented today.",
+      "enum": ["aarch64"]
+    },
+    "form_factor": {
+      "enum": ["phone", "tablet"]
+    },
+    "resolution": {
+      "description": "Panel resolution in pixels.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["width", "height"],
+      "properties": {
+        "width": { "type": "integer", "minimum": 1 },
+        "height": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "orientation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["default", "supported"],
+      "properties": {
+        "default": { "$ref": "#/$defs/orientation" },
+        "supported": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/orientation" }
+        }
+      }
+    },
+    "input": {
+      "description": "Input hardware the device physically has. Whether the OS drives it is recorded in 'hardware'.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["touchscreen"],
+      "properties": {
+        "touchscreen": { "type": "boolean" }
+      }
+    },
+    "hardware": {
+      "description": "Support state per capability. States are evidence, not intent.",
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": { "$ref": "#/$defs/capability_state" }
+    },
+    "runner": {
+      "description": "How an image for this device is executed. This is runner configuration, not hardware description.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": { "enum": ["qemu"] },
+        "qemu": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["machine", "cpu", "memory", "console"],
+          "properties": {
+            "machine": { "type": "string", "minLength": 1 },
+            "cpu": { "type": "string", "minLength": 1 },
+            "memory": {
+              "description": "Guest RAM in MiB.",
+              "type": "integer",
+              "minimum": 64
+            },
+            "console": {
+              "description": "Kernel console device, used verbatim in the kernel command line.",
+              "type": "string",
+              "pattern": "^[A-Za-z0-9,./_-]+$"
+            }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": ["type"],
+            "properties": { "type": { "const": "qemu" } }
+          },
+          "then": { "required": ["qemu"] }
+        }
+      ]
+    },
+    "boot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["method"],
+      "properties": {
+        "method": { "enum": ["qemu"] }
+      }
+    }
+  },
+  "$defs": {
+    "capability_state": {
+      "description": "The only permitted capability states.",
+      "enum": [
+        "supported",
+        "experimental",
+        "unsupported",
+        "not_implemented",
+        "unknown"
+      ]
+    },
+    "orientation": {
+      "enum": ["portrait", "landscape"]
+    }
+  }
+}

@@ -4,30 +4,18 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TARGET="${1:-virtual-phone}"
 
-case "$TARGET" in
-  virtual-phone)
-    DEVICE_PROFILE="$ROOT_DIR/devices/virtual-phone/device.yaml"
-    ;;
-  *)
-    echo "error: unknown target: $TARGET" >&2
-    echo "available targets: virtual-phone" >&2
-    exit 2
-    ;;
-esac
+# shellcheck source=lib/profile.sh
+source "$ROOT_DIR/scripts/lib/profile.sh"
 
-if [[ ! -f "$DEVICE_PROFILE" ]]; then
-    echo "error: missing device profile: $DEVICE_PROFILE" >&2
-    exit 1
-fi
+# Discovers the device under devices/, validates it against the profile
+# schema and exports LT_DEVICE_* / LT_QEMU_*. Exits 2 on an unknown device,
+# 1 on an invalid profile.
+lt_require_device "$TARGET"
+
+DEVICE_PROFILE="$LT_DEVICE_PROFILE"
 
 if ! command -v qemu-system-aarch64 >/dev/null 2>&1; then
     echo "error: qemu-system-aarch64 not found" >&2
-    exit 1
-fi
-
-if ! command -v yq >/dev/null 2>&1; then
-    echo "error: yq not found" >&2
-    echo "Install it with: sudo pacman -S yq" >&2
     exit 1
 fi
 
@@ -49,14 +37,19 @@ if [[ ! -f "$INITRAMFS" ]]; then
 fi
 
 # ------------------------------------------------------------
-# Read QEMU configuration from device profile
+# QEMU configuration from the validated device profile
 # ------------------------------------------------------------
 
-ARCH="$(yq -r '.architecture' "$DEVICE_PROFILE")"
-MACHINE="$(yq -r '.platform.qemu.machine' "$DEVICE_PROFILE")"
-CPU="$(yq -r '.platform.qemu.cpu' "$DEVICE_PROFILE")"
-MEMORY="$(yq -r '.platform.qemu.memory' "$DEVICE_PROFILE")"
-CONSOLE="$(yq -r '.platform.qemu.console' "$DEVICE_PROFILE")"
+ARCH="$LT_DEVICE_ARCH"
+MACHINE="$LT_QEMU_MACHINE"
+CPU="$LT_QEMU_CPU"
+MEMORY="$LT_QEMU_MEMORY"
+CONSOLE="$LT_QEMU_CONSOLE"
+
+if [[ "$LT_RUNNER_TYPE" != "qemu" ]]; then
+    echo "error: device $TARGET uses runner '$LT_RUNNER_TYPE', not qemu" >&2
+    exit 1
+fi
 
 if [[ "$ARCH" != "aarch64" ]]; then
     echo "error: unsupported architecture for this runner: $ARCH" >&2
@@ -68,6 +61,7 @@ echo "       Linux-Touch Runner"
 echo "================================"
 echo
 echo "Target:   $TARGET"
+echo "Device:   $LT_DEVICE_NAME"
 echo "Profile:  $DEVICE_PROFILE"
 echo "Machine:  $MACHINE"
 echo "CPU:      $CPU"

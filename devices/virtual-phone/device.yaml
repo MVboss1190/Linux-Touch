@@ -1,17 +1,10 @@
-id: virtual-phone-01
+schema_version: 1
+
+id: virtual-phone
 name: Linux-Touch Virtual Phone
 status: development
 
 architecture: aarch64
-
-platform:
-  type: qemu
-
-  qemu:
-    machine: virt
-    cpu: cortex-a72
-    memory: 1024
-    console: ttyAMA0
 
 form_factor: phone
 
@@ -25,20 +18,39 @@ orientation:
     - portrait
     - landscape
 
+# Input hardware the device has. Whether the OS can actually use it is
+# recorded under 'hardware'.
 input:
   touchscreen: true
 
+# Capability support states. Permitted values: supported, experimental,
+# unsupported, not_implemented, unknown.
+#
+# Everything is not_implemented today: the runner boots with a serial
+# console only, so no display, input or sensor path is exercised yet.
 hardware:
-  display: virtual
-  battery: virtual
-  accelerometer: virtual
-  rotation: virtual
+  display: not_implemented
+  touchscreen: not_implemented
+  battery: not_implemented
+  accelerometer: not_implemented
+  rotation: not_implemented
   audio: not_implemented
   wifi: not_implemented
   bluetooth: not_implemented
   camera: not_implemented
   modem: not_implemented
-  gpu: virtual_or_software
+  gpu: not_implemented
+
+# How an image for this device is executed. Runner configuration, not
+# hardware description.
+runner:
+  type: qemu
+
+  qemu:
+    machine: virt
+    cpu: cortex-a72
+    memory: 1024
+    console: ttyAMA0
 
 boot:
   method: qemu
