@@ -2,19 +2,25 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-TARGET="${1:-virtual-phone}"
 
 # shellcheck source=lib/profile.sh
 source "$ROOT_DIR/scripts/lib/profile.sh"
 # shellcheck source=lib/tools.sh
 source "$ROOT_DIR/scripts/lib/tools.sh"
 
-# Discovers the device under devices/, validates it against the profile
-# schema and exports LT_DEVICE_* / LT_QEMU_*. Exits 2 on an unknown device,
-# 1 on an invalid profile.
+# [device] [--distro <distro>]; defaults to virtual-phone + busybox-minimal.
+lt_parse_arguments "$@"
+TARGET="$LT_TARGET_DEVICE"
+
+# The device supplies the runner configuration; the distro only selects
+# which build output to boot. Both are validated, so a typo in either is
+# caught before QEMU starts. Exits 2 on an unknown name, 1 on an invalid
+# profile.
 lt_require_device "$TARGET"
+lt_require_distro "$LT_TARGET_DISTRO" "$LT_DEVICE_ARCH"
 
 DEVICE_PROFILE="$LT_DEVICE_PROFILE"
+LT_BUILD_ID="$LT_DISTRO_ID"
 
 if ! command -v qemu-system-aarch64 >/dev/null 2>&1; then
     echo "error: qemu-system-aarch64 not found" >&2
@@ -71,6 +77,7 @@ echo
 echo "Target:   $TARGET"
 echo "Device:   $LT_DEVICE_NAME"
 echo "Profile:  $DEVICE_PROFILE"
+echo "Distro:   $LT_DISTRO_ID"
 echo "Machine:  $MACHINE"
 echo "CPU:      $CPU"
 echo "Memory:   ${MEMORY}M"

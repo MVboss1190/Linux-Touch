@@ -2,19 +2,30 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-TARGET="${1:-virtual-phone}"
 
 # shellcheck source=lib/profile.sh
 source "$ROOT_DIR/scripts/lib/profile.sh"
 # shellcheck source=lib/tools.sh
 source "$ROOT_DIR/scripts/lib/tools.sh"
 
-# Discovers the device under devices/, validates it against the profile
-# schema and exports LT_DEVICE_* / LT_QEMU_*. Exits 2 on an unknown device,
-# 1 on an invalid profile.
+# [device] [--distro <distro>]; defaults to virtual-phone + busybox-minimal.
+lt_parse_arguments "$@"
+TARGET="$LT_TARGET_DEVICE"
+
+# A build is one device profile plus one distro profile.
+#   device -> architecture, kernel, boot, runner, device configuration
+#   distro -> userspace: init system, root filesystem, BusyBox, overlay
+# Each is discovered from disk and validated against its own schema. The
+# device is resolved first so the distro can be checked against its
+# architecture. Exits 2 on an unknown name, 1 on an invalid profile.
 lt_require_device "$TARGET"
+lt_require_distro "$LT_TARGET_DISTRO" "$LT_DEVICE_ARCH"
 
 DEVICE_PROFILE="$LT_DEVICE_PROFILE"
+DISTRO_PROFILE="$LT_DISTRO_PROFILE"
+
+# The output directory is keyed by both axes.
+LT_BUILD_ID="$LT_DISTRO_ID"
 
 KERNEL="$ROOT_DIR/kernel/linux/arch/arm64/boot/Image"
 BUSYBOX="$ROOT_DIR/busybox/busybox"
@@ -48,7 +59,8 @@ echo
 echo "Target: $TARGET"
 echo "Device: $LT_DEVICE_NAME"
 echo "Profile: $DEVICE_PROFILE"
-echo "Build: $LT_BUILD_ID"
+echo "Distro: $LT_DISTRO_ID"
+echo "Distro profile: $DISTRO_PROFILE"
 echo "SOURCE_DATE_EPOCH: $SOURCE_DATE_EPOCH"
 echo
 
@@ -94,60 +106,42 @@ echo "[4/5] Creating root filesystem..."
 # Guarded: refuses any path outside os/rootfs, os/images and out/.
 lt_safe_rm_rf "$ROOTFS"
 
-mkdir -p \
-    "$ROOTFS/bin" \
-    "$ROOTFS/sbin" \
-    "$ROOTFS/etc" \
-    "$ROOTFS/proc" \
-    "$ROOTFS/sys" \
-    "$ROOTFS/dev" \
-    "$ROOTFS/tmp"
+# Directory skeleton, from the distro profile.
+for directory in $LT_DISTRO_DIRECTORIES; do
+    mkdir -p "$ROOTFS/$directory"
+done
 
-cp "$BUSYBOX" "$ROOTFS/bin/busybox"
-chmod +x "$ROOTFS/bin/busybox"
+# Bootstrap, from the distro profile. 'busybox' installs the prebuilt
+# binary and links its applets beside it; 'none' stages nothing.
+if [[ "$LT_DISTRO_BOOTSTRAP_METHOD" == "busybox" ]]; then
+    cp "$BUSYBOX" "$ROOTFS/$LT_DISTRO_BUSYBOX_PATH"
+    chmod +x "$ROOTFS/$LT_DISTRO_BUSYBOX_PATH"
 
-# BusyBox applets required by our minimal system.
-(
-    cd "$ROOTFS/bin"
+    busybox_name="$(basename "$LT_DISTRO_BUSYBOX_PATH")"
+    (
+        cd "$ROOTFS/$(dirname "$LT_DISTRO_BUSYBOX_PATH")"
+        for applet in $LT_DISTRO_APPLETS; do
+            ln -sf "$busybox_name" "$applet"
+        done
+    )
+fi
 
-    for applet in \
-        sh \
-        mount \
-        echo \
-        uname \
-        cat \
-        ls \
-        mkdir \
-        sleep
-    do
-        ln -sf busybox "$applet"
-    done
-)
+# Overlay, from the distro profile. Copied last so it wins, and with modes
+# preserved so /init keeps its executable bit. This is where /init lives.
+if [[ -n "$LT_DISTRO_OVERLAY" ]]; then
+    if [[ ! -d "$LT_DISTRO_OVERLAY" ]]; then
+        echo "error: distro overlay directory not found:" >&2
+        echo "       $LT_DISTRO_OVERLAY" >&2
+        exit 1
+    fi
+    cp -a "$LT_DISTRO_OVERLAY/." "$ROOTFS/"
+fi
 
-# ------------------------------------------------------------
-# Init
-# ------------------------------------------------------------
-
-cat > "$ROOTFS/init" <<'EOF'
-#!/bin/sh
-
-mount -t devtmpfs dev /dev
-mount -t proc proc /proc
-mount -t sysfs sysfs /sys
-
-echo
-echo "================================"
-echo "       Welcome to Linux-Touch"
-echo "================================"
-echo
-echo "Architecture: $(uname -m)"
-echo "Kernel:       $(uname -r)"
-echo
-
-exec /bin/sh
-EOF
-
-chmod +x "$ROOTFS/init"
+if [[ ! -x "$ROOTFS/init" ]]; then
+    echo "error: $LT_DISTRO_ID produced no executable /init" >&2
+    echo "       check distros/$LT_DISTRO_ID/overlay/init and its mode" >&2
+    exit 1
+fi
 
 # ------------------------------------------------------------
 # Build a reproducible initramfs
@@ -171,6 +165,7 @@ echo "[5/5] Initramfs: OK"
 "$(lt_python)" "$ROOT_DIR/scripts/lib/manifest.py" \
     --root "$ROOT_DIR" \
     --device-profile "$DEVICE_PROFILE" \
+    --distro-profile "$DISTRO_PROFILE" \
     --build-id "$LT_BUILD_ID" \
     --source-date-epoch "$SOURCE_DATE_EPOCH" \
     --sources "$SOURCES" \

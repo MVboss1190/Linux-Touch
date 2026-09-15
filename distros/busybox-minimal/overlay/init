@@ -1,0 +1,16 @@
+#!/bin/sh
+
+mount -t devtmpfs dev /dev
+mount -t proc proc /proc
+mount -t sysfs sysfs /sys
+
+echo
+echo "================================"
+echo "       Welcome to Linux-Touch"
+echo "================================"
+echo
+echo "Architecture: $(uname -m)"
+echo "Kernel:       $(uname -r)"
+echo
+
+exec /bin/sh

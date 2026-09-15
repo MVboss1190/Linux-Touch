@@ -1,0 +1,52 @@
+# The userspace half of a build. A distro profile describes WHAT runs;
+# the device profile describes WHERE it runs. Hardware, kernel, boot and
+# runner configuration belong in devices/, never here.
+
+schema_version: 1
+
+id: busybox-minimal
+name: BusyBox Minimal
+status: development
+
+# Architectures this userspace can be assembled for. The builder refuses a
+# device whose architecture is not listed.
+arch_support:
+  - aarch64
+
+init_system: busybox
+
+# How the root filesystem is populated. 'busybox' installs the prebuilt
+# BusyBox binary and links its applets; 'none' stages nothing and leaves
+# everything to the overlay. Compiling BusyBox from the pinned source is a
+# later step: this consumes the prebuilt binary, as before.
+bootstrap:
+  method: busybox
+  binary: bin/busybox
+
+rootfs:
+  directories:
+    - bin
+    - sbin
+    - etc
+    - proc
+    - sys
+    - dev
+    - tmp
+
+  # Applet symlinks created next to the BusyBox binary.
+  applets:
+    - sh
+    - mount
+    - echo
+    - uname
+    - cat
+    - ls
+    - mkdir
+    - sleep
+
+# Copied verbatim over the staged tree after bootstrap, so the overlay wins.
+# Holds /init.
+overlay: overlay
+
+output:
+  format: cpio.gz

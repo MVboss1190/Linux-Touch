@@ -23,6 +23,7 @@ MKINITRAMFS = os.path.join(LIB_DIR, "mkinitramfs.sh")
 TOOLS_SH = os.path.join(LIB_DIR, "tools.sh")
 BUILD_SH = os.path.join(ROOT_DIR, "scripts", "build.sh")
 DEVICE_PROFILE = os.path.join(ROOT_DIR, "devices", "virtual-phone", "device.yaml")
+DISTRO_PROFILE = os.path.join(ROOT_DIR, "distros", "busybox-minimal", "distro.yaml")
 EPOCH = "1704067200"
 BUILD_ID = "busybox-minimal"
 
@@ -69,7 +70,7 @@ def temp_repo():
     destination = tempfile.mkdtemp(prefix="linux-touch-build-")
     repo = os.path.join(destination, "repo")
     os.makedirs(repo)
-    for entry in ("scripts", "devices", "schema", "sources.yaml"):
+    for entry in ("scripts", "devices", "distros", "schema", "sources.yaml"):
         source = os.path.join(ROOT_DIR, entry)
         target = os.path.join(repo, entry)
         if os.path.isdir(source):
@@ -177,6 +178,7 @@ class ManifestTest(unittest.TestCase):
         return manifest_lib.build_manifest(
             root=ROOT_DIR,
             device_profile_path=DEVICE_PROFILE,
+            distro_profile_path=DISTRO_PROFILE,
             build_id=BUILD_ID,
             source_date_epoch=int(EPOCH),
             inputs={"kernel_image": self.kernel, "busybox_binary": self.busybox},
@@ -192,6 +194,14 @@ class ManifestTest(unittest.TestCase):
             manifest["device"]["profile"], "devices/virtual-phone/device.yaml"
         )
         self.assertEqual(manifest["device"]["profile_sha256"], sha256(DEVICE_PROFILE))
+        self.assertEqual(manifest["distro"]["id"], "busybox-minimal")
+        self.assertEqual(
+            manifest["distro"]["profile"], "distros/busybox-minimal/distro.yaml"
+        )
+        self.assertEqual(
+            manifest["distro"]["profile_sha256"], sha256(DISTRO_PROFILE)
+        )
+        self.assertEqual(manifest["distro"]["init_system"], "busybox")
         self.assertEqual(manifest["build"]["id"], BUILD_ID)
         self.assertEqual(manifest["build"]["source_date_epoch"], int(EPOCH))
         self.assertIn("linux", manifest["pinned_sources"])

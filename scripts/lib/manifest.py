@@ -24,7 +24,8 @@ import sys
 LIB_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.dirname(os.path.dirname(LIB_DIR))
 
-MANIFEST_SCHEMA_VERSION = 1
+# 2 added the distro profile block alongside the device block.
+MANIFEST_SCHEMA_VERSION = 2
 CROSS_PREFIXES = (
     "aarch64-linux-gnu-",
     "aarch64-unknown-linux-gnu-",
@@ -41,6 +42,7 @@ def _load(name, filename):
 
 _profile = _load("lt_profile", "profile.py")
 _sources = _load("lt_sources", "sources.py")
+_distro = _load("lt_distro", "distro.py")
 
 ManifestError = _profile.ProfileError
 
@@ -103,6 +105,7 @@ def repository_state(root):
 def build_manifest(
     root,
     device_profile_path,
+    distro_profile_path,
     build_id,
     source_date_epoch,
     inputs,
@@ -110,6 +113,7 @@ def build_manifest(
     sources_manifest_path=None,
 ):
     profile = _profile.load_profile(device_profile_path)
+    distro = _distro.load_profile(distro_profile_path)
 
     pinned = {}
     if sources_manifest_path and os.path.isfile(sources_manifest_path):
@@ -139,9 +143,18 @@ def build_manifest(
             "profile": _relative(device_profile_path, root),
             "profile_sha256": _sources.sha256_file(device_profile_path),
         },
+        "distro": {
+            "id": distro["id"],
+            "name": distro["name"],
+            "init_system": distro["init_system"],
+            "bootstrap_method": distro["bootstrap"]["method"],
+            "profile": _relative(distro_profile_path, root),
+            "profile_sha256": _sources.sha256_file(distro_profile_path),
+        },
         "build": {
             "id": build_id,
-            "userspace": "busybox prototype initramfs",
+            "userspace": distro["name"],
+            "output_format": distro["output"]["format"],
             "source_date_epoch": int(source_date_epoch),
             "compiles_sources": False,
         },
@@ -177,6 +190,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--root", default=ROOT_DIR)
     parser.add_argument("--device-profile", required=True)
+    parser.add_argument("--distro-profile", required=True)
     parser.add_argument("--build-id", required=True)
     parser.add_argument("--source-date-epoch", required=True, type=int)
     parser.add_argument("--sources", default=os.path.join(ROOT_DIR, "sources.yaml"))
@@ -190,6 +204,7 @@ def main(argv=None):
         manifest = build_manifest(
             root=args.root,
             device_profile_path=args.device_profile,
+            distro_profile_path=args.distro_profile,
             build_id=args.build_id,
             source_date_epoch=args.source_date_epoch,
             inputs=_pairs(args.input),
