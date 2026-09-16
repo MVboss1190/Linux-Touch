@@ -6,9 +6,16 @@
 LT_TOOLS_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LT_ROOT_DIR="${LT_ROOT_DIR:-$(cd "$LT_TOOLS_LIB_DIR/../.." && pwd -P)}"
 
-# Identity of the implicit prototype userspace. This is a label, not a
-# distro profile: distro profiles are a later step.
+# Default distro used when none is selected. The distro profile itself
+# lives in distros/; this is only the fallback name.
 LT_BUILD_ID="${LT_BUILD_ID:-busybox-minimal}"
+
+# Prebuilt build inputs. These are inputs, not outputs: nothing here
+# compiles them. Overridable so stages can be exercised in isolation.
+LT_KERNEL_INPUT="${LT_KERNEL_INPUT:-$LT_ROOT_DIR/kernel/linux/arch/arm64/boot/Image}"
+LT_BUSYBOX_INPUT="${LT_BUSYBOX_INPUT:-$LT_ROOT_DIR/busybox/busybox}"
+LT_ROOTFS_DIR="${LT_ROOTFS_DIR:-$LT_ROOT_DIR/os/rootfs}"
+LT_SOURCES_MANIFEST="${LT_SOURCES_MANIFEST:-$LT_ROOT_DIR/sources.yaml}"
 
 lt_python() {
     local candidate
@@ -20,6 +27,21 @@ lt_python() {
     done
     echo "error: python3 is required" >&2
     return 1
+}
+
+# Reproducible builds need a fixed timestamp. Honour the environment, else
+# fall back to the constant pinned in sources.yaml -- never the wall clock.
+# Every stage resolves it the same way, so stages agree when run alone.
+lt_source_date_epoch() {
+    if [[ -n "${SOURCE_DATE_EPOCH:-}" ]]; then
+        if [[ ! "$SOURCE_DATE_EPOCH" =~ ^[0-9]+$ ]]; then
+            echo "error: SOURCE_DATE_EPOCH must be a non-negative integer" >&2
+            return 1
+        fi
+        printf '%s\n' "$SOURCE_DATE_EPOCH"
+        return 0
+    fi
+    "$(lt_python)" "$LT_TOOLS_LIB_DIR/sources.py" --manifest "$LT_SOURCES_MANIFEST" epoch
 }
 
 # Hard requirements for producing the initramfs.

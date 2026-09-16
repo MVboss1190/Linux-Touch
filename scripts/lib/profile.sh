@@ -55,6 +55,7 @@ lt_parse_arguments() {
     local usage="usage: $(basename "${0}") [device] [--distro <distro>]"
     LT_TARGET_DEVICE=""
     LT_TARGET_DISTRO=""
+    LT_EXTRA_ARGS=()
 
     while (( $# > 0 )); do
         case "$1" in
@@ -76,9 +77,11 @@ lt_parse_arguments() {
                 exit 0
                 ;;
             -*)
-                echo "error: unknown option: $1" >&2
-                echo "$usage" >&2
-                exit 2
+                # Kept for the calling script to interpret. Anything it does
+                # not recognise is rejected there, so an unknown option is
+                # still an error.
+                LT_EXTRA_ARGS+=("$1")
+                shift
                 ;;
             *)
                 if [[ -n "$LT_TARGET_DEVICE" ]]; then
@@ -94,6 +97,16 @@ lt_parse_arguments() {
 
     LT_TARGET_DEVICE="${LT_TARGET_DEVICE:-$LT_DEFAULT_DEVICE}"
     LT_TARGET_DISTRO="${LT_TARGET_DISTRO:-$LT_DEFAULT_DISTRO}"
+}
+
+# Reject any option the calling script did not consume from LT_EXTRA_ARGS.
+lt_reject_unknown_options() {
+    local option
+    for option in ${LT_EXTRA_ARGS+"${LT_EXTRA_ARGS[@]}"}; do
+        echo "error: unknown option: $option" >&2
+        echo "usage: $(basename "${0}") [device] [--distro <distro>]${1:+ $1}" >&2
+        exit 2
+    done
 }
 
 # Validate a device profile and export its values into the calling shell.

@@ -25,7 +25,10 @@ LIB_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.dirname(os.path.dirname(LIB_DIR))
 
 # 2 added the distro profile block alongside the device block.
-MANIFEST_SCHEMA_VERSION = 2
+# 3 made out/<device>-<distro>/ canonical: the kernel image is copied into
+#   the output and recorded as an artifact, with copied_from naming the
+#   input it came from.
+MANIFEST_SCHEMA_VERSION = 3
 CROSS_PREFIXES = (
     "aarch64-linux-gnu-",
     "aarch64-unknown-linux-gnu-",
@@ -111,6 +114,7 @@ def build_manifest(
     inputs,
     artifacts,
     sources_manifest_path=None,
+    copied_from=None,
 ):
     profile = _profile.load_profile(device_profile_path)
     distro = _distro.load_profile(distro_profile_path)
@@ -134,6 +138,27 @@ def build_manifest(
         # sources. Say so rather than implying provenance we do not have.
         record["provenance"] = "prebuilt-unverified"
         input_records[name] = record
+
+    artifact_records = {
+        name: file_record(path, root) for name, path in sorted(artifacts.items())
+    }
+
+    # An artifact that is a copy of an input says so, and must match it
+    # byte for byte. Nothing here pretends a copied kernel was built.
+    for artifact_name, input_name in sorted((copied_from or {}).items()):
+        if artifact_name not in artifact_records:
+            raise ManifestError("unknown artifact for --copied-from: %s" % artifact_name)
+        if input_name not in input_records:
+            raise ManifestError("unknown input for --copied-from: %s" % input_name)
+        if artifact_records[artifact_name]["sha256"] != input_records[input_name]["sha256"]:
+            raise ManifestError(
+                "artifact '%s' does not match the input '%s' it was copied from"
+                % (artifact_name, input_name)
+            )
+        artifact_records[artifact_name]["copied_from"] = input_name
+        artifact_records[artifact_name]["provenance"] = input_records[input_name][
+            "provenance"
+        ]
 
     return {
         "schema_version": MANIFEST_SCHEMA_VERSION,
@@ -160,9 +185,7 @@ def build_manifest(
         },
         "pinned_sources": pinned,
         "inputs": input_records,
-        "artifacts": {
-            name: file_record(path, root) for name, path in sorted(artifacts.items())
-        },
+        "artifacts": artifact_records,
         "toolchain": detect_toolchain(),
         "repository": repository_state(root),
     }
@@ -196,6 +219,12 @@ def main(argv=None):
     parser.add_argument("--sources", default=os.path.join(ROOT_DIR, "sources.yaml"))
     parser.add_argument("--input", action="append", metavar="NAME=PATH")
     parser.add_argument("--artifact", action="append", metavar="NAME=PATH")
+    parser.add_argument(
+        "--copied-from",
+        action="append",
+        metavar="ARTIFACT=INPUT",
+        help="record that an artifact is a verbatim copy of an input",
+    )
     parser.add_argument("--output", required=True)
 
     args = parser.parse_args(argv)
@@ -210,6 +239,7 @@ def main(argv=None):
             inputs=_pairs(args.input),
             artifacts=_pairs(args.artifact),
             sources_manifest_path=args.sources,
+            copied_from=_pairs(args.copied_from),
         )
         write_manifest(manifest, args.output)
         print(args.output)

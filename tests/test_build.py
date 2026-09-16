@@ -70,7 +70,7 @@ def temp_repo():
     destination = tempfile.mkdtemp(prefix="linux-touch-build-")
     repo = os.path.join(destination, "repo")
     os.makedirs(repo)
-    for entry in ("scripts", "devices", "distros", "schema", "sources.yaml"):
+    for entry in ("builder", "scripts", "devices", "distros", "schema", "sources.yaml"):
         source = os.path.join(ROOT_DIR, entry)
         target = os.path.join(repo, entry)
         if os.path.isdir(source):
