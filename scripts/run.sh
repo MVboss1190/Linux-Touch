@@ -29,8 +29,11 @@ TARGET="$LT_TARGET_DEVICE"
 lt_require_device "$TARGET"
 lt_require_distro "$LT_TARGET_DISTRO" "$LT_DEVICE_ARCH"
 
+# Checked literally, right next to the exec below that uses it.
 if ! command -v qemu-system-aarch64 >/dev/null 2>&1; then
     echo "error: qemu-system-aarch64 not found" >&2
+    echo "Install it (pacman -S qemu-system-aarch64, apt install" >&2
+    echo "qemu-system-arm), or run ./scripts/check-env.sh for the full list." >&2
     exit 1
 fi
 

@@ -22,6 +22,18 @@ The first milestone deliberately targets QEMU rather than physical phones. We wa
 
 Physical phone support, Android compatibility, cellular modem support, camera support, and automated flashing are out of scope for v0.1.
 
+## Building it
+
+```sh
+./scripts/check-env.sh          # what this machine is missing
+./scripts/fetch.sh              # download the pinned sources
+./scripts/build.sh virtual-phone
+./scripts/run.sh virtual-phone
+```
+
+See [docs/development.md](docs/development.md) for prerequisites, the full
+workflow and where the output goes.
+
 ## Repository layout
 
 ```text

@@ -32,11 +32,8 @@ ROOT_DIR = os.path.dirname(os.path.dirname(LIB_DIR))
 #   kernel and BusyBox were built from the pinned sources or copied from a
 #   prebuilt artifact, with the configuration and toolchain used.
 MANIFEST_SCHEMA_VERSION = 4
-CROSS_PREFIXES = (
-    "aarch64-linux-gnu-",
-    "aarch64-unknown-linux-gnu-",
-    "aarch64-none-linux-gnu-",
-)
+# Imported below from requirements.py, the single source of truth.
+CROSS_PREFIXES = ()
 
 
 def _load(name, filename):
@@ -45,6 +42,9 @@ def _load(name, filename):
     spec.loader.exec_module(module)
     return module
 
+
+_requirements = _load("lt_requirements", "requirements.py")
+CROSS_PREFIXES = _requirements.CROSS_PREFIXES
 
 _profile = _load("lt_profile", "profile.py")
 _sources = _load("lt_sources", "sources.py")

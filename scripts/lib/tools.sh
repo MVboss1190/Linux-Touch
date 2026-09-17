@@ -46,89 +46,39 @@ lt_source_date_epoch() {
     "$(lt_python)" "$LT_TOOLS_LIB_DIR/sources.py" --manifest "$LT_SOURCES_MANIFEST" epoch
 }
 
+# The requirement lists live in scripts/lib/requirements.py so that the
+# builder and ./scripts/check-env.sh can never disagree about what is
+# needed. These helpers only decide when to check.
+lt_requirements_tool() {
+    "$(lt_python)" "$LT_TOOLS_LIB_DIR/requirements.py" "$@"
+}
+
 # Hard requirements for producing the initramfs.
 lt_require_build_tools() {
-    local tool missing=()
-    for tool in find sort stat touch chmod cpio gzip; do
-        command -v "$tool" >/dev/null 2>&1 || missing+=("$tool")
-    done
-    lt_python >/dev/null || missing+=("python3")
+    lt_requirements_tool check --group core --quiet || return 1
 
-    if (( ${#missing[@]} > 0 )); then
-        echo "error: missing required host tools: ${missing[*]}" >&2
-        echo "Install them with your distribution's package manager." >&2
-        echo "GNU coreutils, GNU findutils, GNU cpio and gzip are expected." >&2
-        return 1
-    fi
-
-    if ! LT_CPIO_OWNER_FLAG="$(lt_detect_cpio_owner_flag)"; then
-        echo "error: cpio does not support reproducible archives" >&2
-        echo "GNU cpio 2.12 or newer is required (--reproducible and --owner)." >&2
+    if ! LT_CPIO_OWNER_FLAG="$(lt_requirements_tool cpio-owner-flag)"; then
         return 1
     fi
     export LT_CPIO_OWNER_FLAG
 }
 
-# GNU cpio spells forced-numeric ownership '+0:+0'; older builds accept
-# only '0:0'. Probe once instead of guessing.
-lt_detect_cpio_owner_flag() {
-    local probe_dir candidate status
-    probe_dir="$(mktemp -d)" || return 1
-    status=1
-    for candidate in "--owner=+0:+0" "--owner=0:0"; do
-        if (
-            cd "$probe_dir" &&
-            printf '.\0' |
-                cpio --null --create --quiet --format=newc --reproducible \
-                    "$candidate" >/dev/null 2>&1
-        ); then
-            printf '%s\n' "$candidate"
-            status=0
-            break
-        fi
-    done
-    [[ -n "$probe_dir" && -d "$probe_dir" ]] && rm -rf -- "$probe_dir"
-    return "$status"
-}
-
 # Hard requirements for compiling the pinned kernel and BusyBox. Checked
 # only when a source build is actually going to happen.
 lt_require_source_build_tools() {
-    local tool missing=()
-    for tool in make tar xz bison flex bc sed awk; do
-        command -v "$tool" >/dev/null 2>&1 || missing+=("$tool")
-    done
-
-    if (( ${#missing[@]} > 0 )); then
-        echo "error: a source build needs these host tools: ${missing[*]}" >&2
-        echo "On Debian or Ubuntu they come from build-essential, bison," >&2
-        echo "flex, bc, xz-utils and libelf-dev." >&2
-        return 1
-    fi
-    return 0
+    lt_requirements_tool check --group source-build --quiet
 }
 
 # Advisory only when nothing is compiled. These become
 # hard requirements when a kernel/BusyBox build stage lands.
 lt_report_toolchain() {
-    local prefix candidate
-    prefix="${CROSS_COMPILE:-}"
-    if [[ -z "$prefix" ]]; then
-        for candidate in aarch64-linux-gnu- aarch64-unknown-linux-gnu- aarch64-none-linux-gnu-; do
-            if command -v "${candidate}gcc" >/dev/null 2>&1; then
-                prefix="$candidate"
-                break
-            fi
-        done
-    fi
-
-    if [[ -z "$prefix" ]] || ! command -v "${prefix}gcc" >/dev/null 2>&1; then
-        echo "note: no aarch64 cross compiler detected (not required yet:"
-        echo "      this build consumes prebuilt kernel/BusyBox artifacts)"
+    local prefix
+    if ! prefix="$(lt_requirements_tool cross-compile 2>/dev/null)"; then
+        echo "note: no aarch64 cross compiler detected (not required for this"
+        echo "      build, which consumes prebuilt artifacts; run"
+        echo "      ./scripts/check-env.sh to see what a source build needs)"
         return 0
     fi
-    command -v make >/dev/null 2>&1 ||
-        echo "note: make not found (not required yet)"
     echo "Toolchain: ${prefix}gcc"
 }
 

@@ -7,31 +7,16 @@
 # probes the usual triplets. Fails loudly: a source build must never
 # silently fall back to the host compiler.
 lt_resolve_cross_compile() {
-    local architecture="$1" prefix candidate
+    local architecture="$1"
 
     if [[ "$architecture" != "aarch64" ]]; then
         echo "error: no cross toolchain policy for architecture '$architecture'" >&2
         return 1
     fi
 
-    prefix="${CROSS_COMPILE:-}"
-    if [[ -z "$prefix" ]]; then
-        for candidate in aarch64-linux-gnu- aarch64-unknown-linux-gnu- aarch64-none-linux-gnu-; do
-            if command -v "${candidate}gcc" >/dev/null 2>&1; then
-                prefix="$candidate"
-                break
-            fi
-        done
-    fi
-
-    if [[ -z "$prefix" ]] || ! command -v "${prefix}gcc" >/dev/null 2>&1; then
-        echo "error: no aarch64 cross compiler found" >&2
-        echo "       install one (for example gcc-aarch64-linux-gnu) or set" >&2
-        echo "       CROSS_COMPILE to its prefix, then build again." >&2
-        return 1
-    fi
-
-    printf '%s\n' "$prefix"
+    # The prefixes it tries live in scripts/lib/requirements.py, the same
+    # list ./scripts/check-env.sh reports on.
+    "$(lt_python)" "$LT_ROOT_DIR/scripts/lib/requirements.py" cross-compile
 }
 
 lt_compiler_version() {
