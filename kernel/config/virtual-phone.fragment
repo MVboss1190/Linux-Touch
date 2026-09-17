@@ -1,0 +1,19 @@
+# Kernel options the virtual-phone prototype depends on, merged over the
+# arm64 defconfig with scripts/kconfig/merge_config.sh.
+#
+# arm64 defconfig already enables all of these. They are listed anyway so
+# the requirement is explicit and a future defconfig change that drops one
+# fails the build instead of producing an image that cannot boot.
+
+# /init is executed from a gzip-compressed cpio initramfs.
+CONFIG_BLK_DEV_INITRD=y
+CONFIG_RD_GZIP=y
+
+# /init mounts devtmpfs, proc and sysfs.
+CONFIG_DEVTMPFS=y
+CONFIG_PROC_FS=y
+CONFIG_SYSFS=y
+
+# The QEMU virt machine's console is a PL011 UART on ttyAMA0.
+CONFIG_SERIAL_AMBA_PL011=y
+CONFIG_SERIAL_AMBA_PL011_CONSOLE=y

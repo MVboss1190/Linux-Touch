@@ -15,13 +15,23 @@ arch_support:
 
 init_system: busybox
 
-# How the root filesystem is populated. 'busybox' installs the prebuilt
-# BusyBox binary and links its applets; 'none' stages nothing and leaves
-# everything to the overlay. Compiling BusyBox from the pinned source is a
-# later step: this consumes the prebuilt binary, as before.
+# How the root filesystem is populated. 'busybox' installs a BusyBox binary
+# and links its applets; 'none' stages nothing and leaves everything to the
+# overlay.
+#
+# The 'build' block makes BusyBox a source build: the pinned tarball named
+# in sources.yaml is configured from its defconfig plus the fragment below
+# and linked statically, because the initramfs carries no libc. Without a
+# build block the builder falls back to a prebuilt binary and says so.
 bootstrap:
   method: busybox
   binary: bin/busybox
+
+  build:
+    source: busybox
+    defconfig: defconfig
+    config_fragment: config/busybox.fragment
+    static: true
 
 rootfs:
   directories:

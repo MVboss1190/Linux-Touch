@@ -12,6 +12,7 @@
     "status",
     "architecture",
     "form_factor",
+    "kernel",
     "resolution",
     "orientation",
     "input",
@@ -35,36 +36,98 @@
     },
     "status": {
       "description": "Maturity of the profile itself, not of individual capabilities.",
-      "enum": ["development", "experimental", "supported", "deprecated"]
+      "enum": [
+        "development",
+        "experimental",
+        "supported",
+        "deprecated"
+      ]
     },
     "architecture": {
       "description": "Target CPU architecture. Only aarch64 is implemented today.",
-      "enum": ["aarch64"]
+      "enum": [
+        "aarch64"
+      ]
     },
     "form_factor": {
-      "enum": ["phone", "tablet"]
+      "enum": [
+        "phone",
+        "tablet"
+      ]
+    },
+    "kernel": {
+      "description": "How this device's kernel is produced. Kernel configuration is device territory; userspace belongs to the distro profile.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "defconfig",
+        "image"
+      ],
+      "properties": {
+        "source": {
+          "description": "Name of the pinned source in sources.yaml.",
+          "type": "string",
+          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+        },
+        "defconfig": {
+          "description": "Make target that produces the base configuration.",
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._-]+$"
+        },
+        "image": {
+          "description": "Path of the built kernel image inside the build directory.",
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*$"
+        },
+        "config_fragments": {
+          "description": "Kconfig fragments merged over the defconfig, relative to the repository root.",
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*$"
+          }
+        }
+      }
     },
     "resolution": {
       "description": "Panel resolution in pixels.",
       "type": "object",
       "additionalProperties": false,
-      "required": ["width", "height"],
+      "required": [
+        "width",
+        "height"
+      ],
       "properties": {
-        "width": { "type": "integer", "minimum": 1 },
-        "height": { "type": "integer", "minimum": 1 }
+        "width": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 1
+        }
       }
     },
     "orientation": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["default", "supported"],
+      "required": [
+        "default",
+        "supported"
+      ],
       "properties": {
-        "default": { "$ref": "#/$defs/orientation" },
+        "default": {
+          "$ref": "#/$defs/orientation"
+        },
         "supported": {
           "type": "array",
           "minItems": 1,
           "uniqueItems": true,
-          "items": { "$ref": "#/$defs/orientation" }
+          "items": {
+            "$ref": "#/$defs/orientation"
+          }
         }
       }
     },
@@ -72,31 +135,54 @@
       "description": "Input hardware the device physically has. Whether the OS drives it is recorded in 'hardware'.",
       "type": "object",
       "additionalProperties": false,
-      "required": ["touchscreen"],
+      "required": [
+        "touchscreen"
+      ],
       "properties": {
-        "touchscreen": { "type": "boolean" }
+        "touchscreen": {
+          "type": "boolean"
+        }
       }
     },
     "hardware": {
       "description": "Support state per capability. States are evidence, not intent.",
       "type": "object",
       "minProperties": 1,
-      "additionalProperties": { "$ref": "#/$defs/capability_state" }
+      "additionalProperties": {
+        "$ref": "#/$defs/capability_state"
+      }
     },
     "runner": {
       "description": "How an image for this device is executed. This is runner configuration, not hardware description.",
       "type": "object",
       "additionalProperties": false,
-      "required": ["type"],
+      "required": [
+        "type"
+      ],
       "properties": {
-        "type": { "enum": ["qemu"] },
+        "type": {
+          "enum": [
+            "qemu"
+          ]
+        },
         "qemu": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["machine", "cpu", "memory", "console"],
+          "required": [
+            "machine",
+            "cpu",
+            "memory",
+            "console"
+          ],
           "properties": {
-            "machine": { "type": "string", "minLength": 1 },
-            "cpu": { "type": "string", "minLength": 1 },
+            "machine": {
+              "type": "string",
+              "minLength": 1
+            },
+            "cpu": {
+              "type": "string",
+              "minLength": 1
+            },
             "memory": {
               "description": "Guest RAM in MiB.",
               "type": "integer",
@@ -113,19 +199,35 @@
       "allOf": [
         {
           "if": {
-            "required": ["type"],
-            "properties": { "type": { "const": "qemu" } }
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "const": "qemu"
+              }
+            }
           },
-          "then": { "required": ["qemu"] }
+          "then": {
+            "required": [
+              "qemu"
+            ]
+          }
         }
       ]
     },
     "boot": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["method"],
+      "required": [
+        "method"
+      ],
       "properties": {
-        "method": { "enum": ["qemu"] }
+        "method": {
+          "enum": [
+            "qemu"
+          ]
+        }
       }
     }
   },
@@ -141,7 +243,10 @@
       ]
     },
     "orientation": {
-      "enum": ["portrait", "landscape"]
+      "enum": [
+        "portrait",
+        "landscape"
+      ]
     }
   }
 }

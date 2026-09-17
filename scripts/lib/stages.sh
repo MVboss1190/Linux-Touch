@@ -44,6 +44,25 @@ lt_tree_fingerprint() {
     ) | sha256sum | cut -d' ' -f1
 }
 
+# A component record is only usable if it actually parses. A stamp alone
+# cannot vouch for that.
+lt_is_json_file() {
+    [[ -f "$1" ]] || return 1
+    "$(lt_python)" -c 'import json,sys; json.load(open(sys.argv[1]))' "$1" 2>/dev/null
+}
+
+# Provenance recorded by the stage that produced a component, or "none".
+lt_component_provenance() {
+    local record="$1"
+    if [[ ! -f "$record" ]]; then
+        printf 'none\n'
+        return 0
+    fi
+    "$(lt_python)" -c \
+        'import json,sys; print(json.load(open(sys.argv[1])).get("provenance","none"))' \
+        "$record" 2>/dev/null || printf 'none\n'
+}
+
 lt_stage_stamp_path() {
     printf '%s/.stamps/%s\n' "$1" "$2"
 }
@@ -59,8 +78,13 @@ lt_stage_is_current() {
     [[ -f "$stamp" ]] || return 1
     [[ "$(cat "$stamp")" == "$key" ]] || return 1
 
+    # An empty output is a truncated or half-written one: treat it as a
+    # cache miss rather than trusting the stamp.
     for output in "$@"; do
-        [[ -e "$output" ]] || return 1
+        if [[ -d "$output" ]]; then
+            continue
+        fi
+        [[ -s "$output" ]] || return 1
     done
     return 0
 }

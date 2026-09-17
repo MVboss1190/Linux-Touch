@@ -17,53 +17,117 @@
     "output"
   ],
   "properties": {
-    "schema_version": { "const": 1 },
+    "schema_version": {
+      "const": 1
+    },
     "id": {
       "description": "Stable identifier. Must equal the profile's directory name.",
       "type": "string",
       "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
     },
-    "name": { "type": "string", "minLength": 1 },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
     "status": {
-      "enum": ["development", "experimental", "supported", "deprecated"]
+      "enum": [
+        "development",
+        "experimental",
+        "supported",
+        "deprecated"
+      ]
     },
     "arch_support": {
       "description": "Architectures this userspace can be built for.",
       "type": "array",
       "minItems": 1,
       "uniqueItems": true,
-      "items": { "type": "string", "pattern": "^[a-z0-9_]+$" }
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9_]+$"
+      }
     },
-    "init_system": { "enum": ["busybox"] },
+    "init_system": {
+      "enum": [
+        "busybox"
+      ]
+    },
     "bootstrap": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["method"],
+      "required": [
+        "method"
+      ],
       "properties": {
         "method": {
           "description": "'busybox' installs the prebuilt BusyBox binary and links applets; 'none' stages nothing.",
-          "enum": ["none", "busybox"]
+          "enum": [
+            "none",
+            "busybox"
+          ]
         },
         "binary": {
           "description": "Where the BusyBox binary is installed, relative to the root filesystem.",
           "type": "string",
           "pattern": "^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*$"
+        },
+        "build": {
+          "description": "Build BusyBox from the pinned source instead of consuming a prebuilt binary.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "source",
+            "defconfig",
+            "static"
+          ],
+          "properties": {
+            "source": {
+              "description": "Name of the pinned source in sources.yaml.",
+              "type": "string",
+              "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+            },
+            "defconfig": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9._-]+$"
+            },
+            "config_fragment": {
+              "description": "Config fragment applied over the defconfig, relative to the profile directory.",
+              "type": "string",
+              "pattern": "^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*$"
+            },
+            "static": {
+              "description": "The initramfs has no dynamic loader, so this must be true for a bootable userspace.",
+              "type": "boolean"
+            }
+          }
         }
       },
       "allOf": [
         {
           "if": {
-            "required": ["method"],
-            "properties": { "method": { "const": "busybox" } }
+            "required": [
+              "method"
+            ],
+            "properties": {
+              "method": {
+                "const": "busybox"
+              }
+            }
           },
-          "then": { "required": ["binary"] }
+          "then": {
+            "required": [
+              "binary"
+            ]
+          }
         }
       ]
     },
     "rootfs": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["directories"],
+      "required": [
+        "directories"
+      ],
       "properties": {
         "directories": {
           "type": "array",
@@ -78,7 +142,10 @@
           "description": "BusyBox applet symlinks, created beside the BusyBox binary.",
           "type": "array",
           "uniqueItems": true,
-          "items": { "type": "string", "pattern": "^[A-Za-z0-9._-]+$" }
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._-]+$"
+          }
         }
       }
     },
@@ -90,9 +157,15 @@
     "output": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["format"],
+      "required": [
+        "format"
+      ],
       "properties": {
-        "format": { "enum": ["cpio.gz"] }
+        "format": {
+          "enum": [
+            "cpio.gz"
+          ]
+        }
       }
     }
   }

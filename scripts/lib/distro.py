@@ -164,6 +164,21 @@ def shell_environment(
         ("LT_DISTRO_OVERLAY", os.path.join(directory, overlay) if overlay else ""),
         ("LT_DISTRO_OUTPUT_FORMAT", distro["output"]["format"]),
     ]
+
+    # A distro either builds its userspace from a pinned source or consumes
+    # a prebuilt binary. Empty values mean "no source build configured".
+    build = bootstrap.get("build") or {}
+    values.extend(
+        [
+            ("LT_DISTRO_BUILD_SOURCE", build.get("source", "")),
+            ("LT_DISTRO_BUILD_DEFCONFIG", build.get("defconfig", "")),
+            ("LT_DISTRO_BUILD_FRAGMENT", build.get("config_fragment", "")),
+            (
+                "LT_DISTRO_BUILD_STATIC",
+                "true" if build.get("static") else "false",
+            ),
+        ]
+    )
     return "\n".join("%s=%s" % (key, shlex.quote(str(value))) for key, value in values)
 
 

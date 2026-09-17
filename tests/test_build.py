@@ -257,7 +257,11 @@ class BuildInputTest(unittest.TestCase):
         self.addCleanup(shutil.rmtree, os.path.dirname(repo), True)
         result = self.build_in(repo, "virtual-phone")
         self.assertEqual(result.returncode, 1)
-        self.assertIn("kernel not found", result.stderr)
+        # Neither a source build nor a prebuilt image is possible here, and
+        # the error must name both remedies rather than just one.
+        self.assertIn("cannot produce kernel", result.stderr)
+        self.assertIn("No prebuilt artifact", result.stderr)
+        self.assertIn("fetch.sh", result.stderr)
         self.assertFalse(os.path.exists(os.path.join(repo, "os", "rootfs")))
         self.assertFalse(os.path.exists(os.path.join(repo, "out")))
 
@@ -270,7 +274,7 @@ class BuildInputTest(unittest.TestCase):
             handle.write(b"stand-in kernel")
         result = self.build_in(repo, "virtual-phone")
         self.assertEqual(result.returncode, 1)
-        self.assertIn("BusyBox not found", result.stderr)
+        self.assertIn("cannot produce busybox", result.stderr)
         self.assertFalse(os.path.exists(os.path.join(repo, "out")))
 
     def test_invalid_source_date_epoch_is_rejected(self):

@@ -16,6 +16,8 @@ LT_KERNEL_INPUT="${LT_KERNEL_INPUT:-$LT_ROOT_DIR/kernel/linux/arch/arm64/boot/Im
 LT_BUSYBOX_INPUT="${LT_BUSYBOX_INPUT:-$LT_ROOT_DIR/busybox/busybox}"
 LT_ROOTFS_DIR="${LT_ROOTFS_DIR:-$LT_ROOT_DIR/os/rootfs}"
 LT_SOURCES_MANIFEST="${LT_SOURCES_MANIFEST:-$LT_ROOT_DIR/sources.yaml}"
+LT_SOURCE_CACHE_DIR="${LT_SOURCE_CACHE_DIR:-$LT_ROOT_DIR/.cache/sources}"
+export LT_SOURCE_CACHE_DIR
 
 lt_python() {
     local candidate
@@ -89,7 +91,24 @@ lt_detect_cpio_owner_flag() {
     return "$status"
 }
 
-# Advisory only: nothing in the current pipeline compiles. These become
+# Hard requirements for compiling the pinned kernel and BusyBox. Checked
+# only when a source build is actually going to happen.
+lt_require_source_build_tools() {
+    local tool missing=()
+    for tool in make tar xz bison flex bc sed awk; do
+        command -v "$tool" >/dev/null 2>&1 || missing+=("$tool")
+    done
+
+    if (( ${#missing[@]} > 0 )); then
+        echo "error: a source build needs these host tools: ${missing[*]}" >&2
+        echo "On Debian or Ubuntu they come from build-essential, bison," >&2
+        echo "flex, bc, xz-utils and libelf-dev." >&2
+        return 1
+    fi
+    return 0
+}
+
+# Advisory only when nothing is compiled. These become
 # hard requirements when a kernel/BusyBox build stage lands.
 lt_report_toolchain() {
     local prefix candidate

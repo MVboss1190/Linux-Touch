@@ -3,7 +3,14 @@ set -euo pipefail
 
 # Linux-Touch builder: orchestrates the build stages.
 #
-#   ./scripts/build.sh [device] [--distro <distro>] [--force] [--no-legacy-copy]
+#   ./scripts/build.sh [device] [--distro <distro>] [--force]
+#                      [--from-source | --prebuilt] [--no-legacy-copy]
+#
+# The kernel and BusyBox are built from the versions pinned in sources.yaml
+# when those sources have been fetched and a cross toolchain is present.
+# --from-source requires that and fails otherwise; --prebuilt requires
+# hand-built artifacts instead. Whichever happens is announced and recorded
+# in the manifest.
 #
 # The work itself lives in builder/stage-*.sh, one stage per step, each
 # runnable on its own. This script only decides the order and reports.
@@ -32,17 +39,20 @@ TARGET="$LT_TARGET_DEVICE"
 # Options this script understands beyond the shared ones.
 LT_FORCE=0
 LEGACY_COPY=1
+LT_BUILD_MODE=auto
 REMAINING=()
 for option in ${LT_EXTRA_ARGS+"${LT_EXTRA_ARGS[@]}"}; do
     case "$option" in
         --force) LT_FORCE=1 ;;
         --no-legacy-copy) LEGACY_COPY=0 ;;
+        --from-source) LT_BUILD_MODE=source ;;
+        --prebuilt) LT_BUILD_MODE=prebuilt ;;
         *) REMAINING+=("$option") ;;
     esac
 done
 LT_EXTRA_ARGS=(${REMAINING+"${REMAINING[@]}"})
-lt_reject_unknown_options "[--force] [--no-legacy-copy]"
-export LT_FORCE
+lt_reject_unknown_options "[--force] [--from-source|--prebuilt] [--no-legacy-copy]"
+export LT_FORCE LT_BUILD_MODE
 
 # A build is one device profile plus one distro profile.
 #   device -> architecture, kernel, boot, runner, device configuration
@@ -72,6 +82,7 @@ echo "Profile: $LT_DEVICE_PROFILE"
 echo "Distro: $LT_DISTRO_ID"
 echo "Distro profile: $LT_DISTRO_PROFILE"
 echo "Output: $OUT_DIR"
+echo "Build mode: $LT_BUILD_MODE"
 echo "SOURCE_DATE_EPOCH: $SOURCE_DATE_EPOCH"
 echo
 

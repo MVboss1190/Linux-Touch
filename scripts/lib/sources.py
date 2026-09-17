@@ -26,7 +26,11 @@ LIB_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.dirname(os.path.dirname(LIB_DIR))
 DEFAULT_MANIFEST = os.path.join(ROOT_DIR, "sources.yaml")
 SCHEMA_PATH = os.path.join(ROOT_DIR, "schema", "sources-v1.json")
-DEFAULT_CACHE_DIR = os.path.join(ROOT_DIR, ".cache", "sources")
+# Overridable so several workspaces (or CI jobs) can share one fetch
+# instead of each downloading the pinned tarballs again.
+DEFAULT_CACHE_DIR = os.environ.get("LT_SOURCE_CACHE_DIR") or os.path.join(
+    ROOT_DIR, ".cache", "sources"
+)
 
 EXIT_OK = 0
 EXIT_INVALID = 1
@@ -164,6 +168,69 @@ def fetch_source(source, cache_dir=DEFAULT_CACHE_DIR, allow_unverified=False):
     return destination
 
 
+def extract_source(source, dest_dir, cache_dir=DEFAULT_CACHE_DIR):
+    """Unpack a fetched, checksum-verified tarball. Idempotent.
+
+    The tarball must already be in the cache: fetching is a separate,
+    explicit step, so a build can never quietly pull from the network.
+    """
+    import subprocess
+
+    archive = cached_path(source, cache_dir)
+    if not os.path.isfile(archive):
+        raise SourceError(
+            "%s: pinned source not fetched: %s\n"
+            "Run ./scripts/fetch.sh %s first."
+            % (source["name"], archive, source["name"])
+        )
+
+    ok, actual = verify(archive, source.get("sha256"))
+    if ok is False:
+        raise SourceError(
+            "%s: cached file %s has sha256 %s but %s is pinned."
+            % (source["name"], archive, actual, source["sha256"])
+        )
+
+    target = os.path.join(dest_dir, "%s-%s" % (source["name"], source["version"]))
+    marker = os.path.join(target, ".linux-touch-extracted")
+    expected_marker = "%s\n" % (source.get("sha256") or "unverified")
+
+    if os.path.isfile(marker):
+        with open(marker, "r", encoding="utf-8") as handle:
+            if handle.read() == expected_marker:
+                return target
+
+    if os.path.isdir(target):
+        shutil.rmtree(target)
+    os.makedirs(dest_dir, exist_ok=True)
+
+    staging = target + ".unpack"
+    if os.path.isdir(staging):
+        shutil.rmtree(staging)
+    os.makedirs(staging)
+    try:
+        subprocess.run(
+            ["tar", "-x", "-f", archive, "-C", staging], check=True
+        )
+    except (OSError, subprocess.CalledProcessError) as error:
+        shutil.rmtree(staging, ignore_errors=True)
+        raise SourceError("%s: could not unpack %s: %s" % (source["name"], archive, error))
+
+    entries = os.listdir(staging)
+    if len(entries) != 1 or not os.path.isdir(os.path.join(staging, entries[0])):
+        shutil.rmtree(staging, ignore_errors=True)
+        raise SourceError(
+            "%s: expected a single top-level directory in %s"
+            % (source["name"], archive)
+        )
+
+    os.replace(os.path.join(staging, entries[0]), target)
+    shutil.rmtree(staging, ignore_errors=True)
+    with open(marker, "w", encoding="utf-8") as handle:
+        handle.write(expected_marker)
+    return target
+
+
 def describe(source, cache_dir=DEFAULT_CACHE_DIR):
     """Manifest-ready description of a pinned source."""
     return {
@@ -193,6 +260,11 @@ def main(argv=None):
     )
     describe_parser = commands.add_parser("describe", help="print a source as JSON")
     describe_parser.add_argument("name")
+    extract_parser = commands.add_parser(
+        "extract", help="unpack a fetched source and print its directory"
+    )
+    extract_parser.add_argument("name")
+    extract_parser.add_argument("--dest-dir", required=True)
 
     args = parser.parse_args(argv)
 
@@ -219,6 +291,12 @@ def main(argv=None):
                     describe(get_source(manifest, args.name), args.cache_dir),
                     indent=2,
                     sort_keys=True,
+                )
+            )
+        elif args.command == "extract":
+            print(
+                extract_source(
+                    get_source(manifest, args.name), args.dest_dir, args.cache_dir
                 )
             )
         elif args.command == "fetch":

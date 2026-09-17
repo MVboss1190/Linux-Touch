@@ -150,7 +150,7 @@ class CanonicalOutputTest(WorkspaceTest):
     def test_manifest_hashes_match_the_artifacts(self):
         self.assertEqual(self.workspace.build().returncode, 0)
         manifest = self.workspace.manifest()
-        self.assertEqual(manifest["schema_version"], 3)
+        self.assertEqual(manifest["schema_version"], 4)
         for name, filename in (
             ("kernel_image", "Image"),
             ("initramfs", "initramfs.cpio.gz"),

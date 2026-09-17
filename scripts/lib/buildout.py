@@ -21,7 +21,7 @@ import sys
 LIB_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.dirname(os.path.dirname(LIB_DIR))
 MANIFEST_FILENAME = "manifest.json"
-SUPPORTED_SCHEMA_VERSIONS = (3,)
+SUPPORTED_SCHEMA_VERSIONS = (4,)
 REQUIRED_ARTIFACTS = ("kernel_image", "initramfs")
 
 EXIT_OK = 0

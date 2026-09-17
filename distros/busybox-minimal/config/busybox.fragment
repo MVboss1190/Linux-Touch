@@ -1,0 +1,28 @@
+# BusyBox options this distro requires, applied over its defconfig.
+#
+# The binary is linked statically: the initramfs has no dynamic loader and
+# no libc, so a dynamically linked BusyBox cannot execute as /bin/sh.
+CONFIG_STATIC=y
+
+# Applet symlinks are created by the rootfs stage from the distro profile,
+# not by BusyBox's own installer.
+CONFIG_INSTALL_APPLET_SYMLINKS=n
+CONFIG_INSTALL_APPLET_HARDLINKS=n
+CONFIG_INSTALL_APPLET_SCRIPT_WRAPPERS=n
+CONFIG_INSTALL_APPLET_DONT=y
+
+# Not usable from a static binary and not needed by this userspace.
+CONFIG_PAM=n
+CONFIG_FEATURE_WTMP=n
+CONFIG_FEATURE_UTMP=n
+
+# The 'tc' applet does not compile against current kernel headers: it still
+# references the CBQ scheduler structures, which Linux removed. Traffic
+# control is not part of this userspace anyway.
+CONFIG_TC=n
+
+# SHA hardware acceleration in BusyBox is an x86-only code path, but its
+# defconfig enables it regardless of target, so the aarch64 cross build
+# fails on the missing shaNI implementation.
+CONFIG_SHA1_HWACCEL=n
+CONFIG_SHA256_HWACCEL=n

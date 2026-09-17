@@ -28,7 +28,10 @@ ROOT_DIR = os.path.dirname(os.path.dirname(LIB_DIR))
 # 3 made out/<device>-<distro>/ canonical: the kernel image is copied into
 #   the output and recorded as an artifact, with copied_from naming the
 #   input it came from.
-MANIFEST_SCHEMA_VERSION = 3
+# 4 added the components block: per-component provenance saying whether the
+#   kernel and BusyBox were built from the pinned sources or copied from a
+#   prebuilt artifact, with the configuration and toolchain used.
+MANIFEST_SCHEMA_VERSION = 4
 CROSS_PREFIXES = (
     "aarch64-linux-gnu-",
     "aarch64-unknown-linux-gnu-",
@@ -115,6 +118,7 @@ def build_manifest(
     artifacts,
     sources_manifest_path=None,
     copied_from=None,
+    components=None,
 ):
     profile = _profile.load_profile(device_profile_path)
     distro = _distro.load_profile(distro_profile_path)
@@ -130,13 +134,22 @@ def build_manifest(
                 "checksum_source": source.get("checksum_source"),
             }
 
+    components = dict(components or {})
+
+    # An input's provenance comes from the component record written by the
+    # stage that produced it: something built here is attributed to the
+    # pinned source, something copied in explicitly is not.
+    provenance_by_component = {
+        "kernel_image": components.get("kernel", {}).get("provenance"),
+        "busybox_binary": components.get("busybox", {}).get("provenance"),
+    }
+
     input_records = {}
     for name, path in sorted(inputs.items()):
         record = file_record(path, root)
-        # The prebuilt kernel and BusyBox in this tree were produced by hand
-        # before any pin existed, so they cannot be attributed to the pinned
-        # sources. Say so rather than implying provenance we do not have.
-        record["provenance"] = "prebuilt-unverified"
+        record["provenance"] = (
+            provenance_by_component.get(name) or "prebuilt-unverified"
+        )
         input_records[name] = record
 
     artifact_records = {
@@ -184,6 +197,7 @@ def build_manifest(
             "compiles_sources": False,
         },
         "pinned_sources": pinned,
+        "components": components,
         "inputs": input_records,
         "artifacts": artifact_records,
         "toolchain": detect_toolchain(),
@@ -209,6 +223,20 @@ def _pairs(values):
     return result
 
 
+def _read_components(paths):
+    """Load the JSON records the build stages wrote."""
+    components = {}
+    for name, path in sorted(paths.items()):
+        if not os.path.isfile(path):
+            raise ManifestError("missing component record: %s" % path)
+        try:
+            with open(path, "r", encoding="utf-8") as handle:
+                components[name] = json.load(handle)
+        except ValueError as error:
+            raise ManifestError("%s: unreadable component record: %s" % (path, error))
+    return components
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--root", default=ROOT_DIR)
@@ -219,6 +247,12 @@ def main(argv=None):
     parser.add_argument("--sources", default=os.path.join(ROOT_DIR, "sources.yaml"))
     parser.add_argument("--input", action="append", metavar="NAME=PATH")
     parser.add_argument("--artifact", action="append", metavar="NAME=PATH")
+    parser.add_argument(
+        "--component",
+        action="append",
+        metavar="NAME=PATH",
+        help="JSON record describing how a component was produced",
+    )
     parser.add_argument(
         "--copied-from",
         action="append",
@@ -240,6 +274,7 @@ def main(argv=None):
             artifacts=_pairs(args.artifact),
             sources_manifest_path=args.sources,
             copied_from=_pairs(args.copied_from),
+            components=_read_components(_pairs(args.component)),
         )
         write_manifest(manifest, args.output)
         print(args.output)

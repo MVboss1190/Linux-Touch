@@ -434,11 +434,16 @@ def shell_environment(name, devices_dir=DEFAULT_DEVICES_DIR, schema_path=SCHEMA_
     path = resolve(name, devices_dir)
     profile = load_profile(path, schema_path)
     runner = profile["runner"]
+    kernel = profile["kernel"]
     values = [
         ("LT_DEVICE_ID", profile["id"]),
         ("LT_DEVICE_NAME", profile["name"]),
         ("LT_DEVICE_PROFILE", os.path.abspath(path)),
         ("LT_DEVICE_ARCH", profile["architecture"]),
+        ("LT_DEVICE_KERNEL_SOURCE", kernel["source"]),
+        ("LT_DEVICE_KERNEL_DEFCONFIG", kernel["defconfig"]),
+        ("LT_DEVICE_KERNEL_IMAGE", kernel["image"]),
+        ("LT_DEVICE_KERNEL_FRAGMENTS", " ".join(kernel.get("config_fragments") or [])),
         ("LT_RUNNER_TYPE", runner["type"]),
         ("LT_BOOT_METHOD", profile["boot"]["method"]),
     ]

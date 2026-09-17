@@ -35,6 +35,13 @@ architecture: aarch64
 
 form_factor: phone
 
+kernel:
+  source: linux
+  defconfig: defconfig
+  image: arch/arm64/boot/Image
+  config_fragments:
+    - kernel/config/virtual-phone.fragment
+
 resolution:
   width: 1080
   height: 2400
@@ -127,6 +134,14 @@ class InvalidProfileTest(unittest.TestCase):
         fixture = ProfileFixture(text, directory)
         self.addCleanup(fixture.cleanup)
         return run_tool("validate", fixture.path)
+
+    def test_missing_kernel_configuration(self):
+        text = VALID_PROFILE[: VALID_PROFILE.index("kernel:")] + VALID_PROFILE[
+            VALID_PROFILE.index("resolution:") :
+        ]
+        result = self.validate_text(text)
+        self.assertEqual(result.returncode, EXIT_INVALID)
+        self.assertIn("kernel", result.stderr)
 
     def test_missing_required_field(self):
         text = VALID_PROFILE.replace("architecture: aarch64\n", "")

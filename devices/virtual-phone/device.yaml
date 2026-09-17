@@ -41,6 +41,16 @@ hardware:
   modem: not_implemented
   gpu: not_implemented
 
+# How the kernel for this device is produced. The source name refers to an
+# entry in sources.yaml, so the version and checksum stay pinned in one
+# place. Kernel configuration is device territory; userspace is not.
+kernel:
+  source: linux
+  defconfig: defconfig
+  image: arch/arm64/boot/Image
+  config_fragments:
+    - kernel/config/virtual-phone.fragment
+
 # How an image for this device is executed. Runner configuration, not
 # hardware description.
 runner:
