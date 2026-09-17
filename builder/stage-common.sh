@@ -48,9 +48,15 @@ lt_resolve_build_mode() {
     local component="$1" source_name="$2" prebuilt="$3"
     local have_source=0 have_prebuilt=0 have_toolchain=0 reason=""
 
-    if [[ -n "$source_name" ]] &&
-        "$(lt_python)" "$ROOT_DIR/scripts/lib/sources.py"             --manifest "$LT_SOURCES_MANIFEST" describe "$source_name" 2>/dev/null |
-            grep -q '"cached": true'; then
+    # Deliberately not piped into grep: `grep -q` exits on its first match,
+    # which can hand the writer a SIGPIPE, and under `pipefail` a successful
+    # match would then read as a failure. Capture the output, then test it.
+    local description=""
+    if [[ -n "$source_name" ]]; then
+        description="$("$(lt_python)" "$ROOT_DIR/scripts/lib/sources.py" --manifest "$LT_SOURCES_MANIFEST" describe "$source_name" 2>/dev/null)" || description=""
+    fi
+
+    if [[ "$description" == *'"cached": true'* ]]; then
         have_source=1
     else
         reason="the pinned source is not fetched (run ./scripts/fetch.sh $source_name)"
